@@ -1,28 +1,5 @@
 ---
 - hosts: backup
-  vars:
-    gitea_backup:
-      gitea:
-        namespace: "gitea"
-        containerName: "gitea"
-        lablelSelector: "app=gitea"
-      destinations:
-        - type: "s3"
-          bucket: "t7-backup-ops01"
-          prefix: "gitea/dumps"
-          accessKeyFile: "/config/ops01-backup/s3-key.txt"
-          secretKeyFile: "/config/ops01-backup/s3-secret.txt"
-          endpoint: "https://nyc3.digitaloceanspaces.com"
-          disabled: false
-        - type: "sftp"
-          host: "de1666.rsync.net"
-          user: "de1666"
-          keyFile: "/config/rsync-net-key/id_rsa"
-          pubKeyFile: "/config/rsync-net-key/id_rsa.pub"
-          prefix: "backups/code.ten7.com/dumps"
-          disabled: false
-
-
   tasks:
     - name: Generate the backup timestamp.
       set_fact:
