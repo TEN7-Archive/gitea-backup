@@ -1,0 +1,113 @@
+---
+- hosts: backup
+  vars:
+    gitea_backup:
+      gitea:
+        namespace: "gitea"
+        containerName: "gitea"
+        lablelSelector: "app=gitea"
+      destinations:
+        - type: "s3"
+          bucket: "t7-backup-ops01"
+          prefix: "gitea/dumps"
+          accessKeyFile: "/config/ops01-backup/s3-key.txt"
+          secretKeyFile: "/config/ops01-backup/s3-secret.txt"
+          endpoint: "https://nyc3.digitaloceanspaces.com"
+          disabled: false
+        - type: "sftp"
+          host: "de1666.rsync.net"
+          user: "de1666"
+          keyFile: "/config/rsync-net-key/id_rsa"
+          pubKeyFile: "/config/rsync-net-key/id_rsa.pub"
+          prefix: "backups/code.ten7.com/dumps"
+          disabled: false
+
+
+  tasks:
+    - name: Generate the backup timestamp.
+      set_fact:
+        _backup_timestamp: "{{lookup('pipe','date +%Y%m%d%H%M%S')}}"
+
+    - name: Fetch the Gitea pod definition(s)
+      set_fact:
+        _gitea_pod_def: "{{ lookup('k8s', kind='pod', namespace=gitea_backup.gitea.namespace, label_selector=gitea_backup.gitea.lablelSelector) }}"
+    - fail:
+        msg: "Could not find pod with correct label selector (app=gitea)"
+      when:
+        - "(_gitea_pod_def | default([])) | length < 1"
+
+    - debug:
+        msg: "{{ _gitea_pod_def.metadata.name }}"
+
+    - name: Create a new backup dump where we can find it.
+      kubernetes.core.k8s_exec:
+        namespace: "{{ _gitea_pod_def.metadata.namespace }}"
+        pod: "{{ _gitea_pod_def.metadata.name }}"
+        container: "{{ gitea_backup.gitea.containerName }}"
+        command: >
+          gitea dump
+          --type tar.gz
+          --file /tmp/gitea-backup-{{ _backup_timestamp }}
+
+    - name: Create a temp directory to hold the backup
+      tempfile:
+        state: directory
+        prefix: "gitea-backup"
+      register: _run_temp_dir
+      notify:
+        - delete temp items
+
+    - name: Generate the backup file name.
+      set_fact:
+        _backup_file_name: "gitea-backup-{{ _backup_timestamp }}.tar.gz"
+        _backup_file_path: "{{ _run_temp_dir.path }}/gitea-backup-{{ _backup_timestamp }}.tar.gz"
+
+    ##
+    ## This should work, but fails due to a library issue.
+    ##
+    # - name: Copy backup to local
+    #   kubernetes.core.k8s_cp:
+    #     namespace: "{{ _gitea_pod_def.metadata.namespace }}"
+    #     pod: "{{ _gitea_pod_def.metadata.name }}"
+    #     container: "gitea"
+    #     state: from_pod
+    #     remote_path: "/tmp/gitea-backup-{{ _backup_timestamp }}.tar.gz"
+    #     local_path:  "/tmp/gitea-backup-{{ _backup_timestamp }}.tar.gz"
+
+    - name: Copy backup to local
+      shell: >
+        kubectl cp
+        {{ _gitea_pod_def.metadata.namespace }}/{{ _gitea_pod_def.metadata.name }}:/tmp/gitea-backup-{{ _backup_timestamp }}.tar.gz
+        {{ _backup_file_path }}
+
+    - name: Delete the dump on the gitea pod.
+      kubernetes.core.k8s_exec:
+        namespace: "{{ _gitea_pod_def.metadata.namespace }}"
+        pod: "{{ _gitea_pod_def.metadata.name }}"
+        container: "gitea"
+        command: >
+          rm /tmp/gitea-backup-{{ _backup_timestamp }}.tar.gz
+
+    - name: Send backup to s3 destinations.
+      include_tasks: "s3.yml"
+      loop: "{{ gitea_backup.destinations | default([]) | selectattr('type', '==', 's3') }}"
+      loop_control:
+        extended: yes
+        label: "{{ _backup.name | default(ansible_loop.index0) }}"
+        loop_var: _backup
+
+    - name: Send backup to rsync destinations.
+      include_tasks: "sftp.yml"
+      loop: "{{ gitea_backup.destinations | default([]) | selectattr('type', '==', 'sftp') }}"
+      loop_control:
+        extended: yes
+        label: "{{ _backup.name | default(ansible_loop.index0) }}"
+        loop_var: _backup
+
+  handlers:
+    - name: delete temp items
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "{{ _run_temp_dir.path }}"

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+case "$1" in
+  "")
+    echo $"Usage: $0 {backup_set_name}"
+    exit 1
+    ;;
+
+  *)
+    if [ -f "/config/gitea-backup/gitea-backup.yml" ]; then
+      ansible-playbook -i /ansible/inventories/all.ini  -e "@/config/gitea-backup/gitea-backup.yml" /ansible/backup.yml
+    else
+      ansible-playbook -i /ansible/inventories/all.ini /ansible/backup.yml
+    fi
+    ;;
+
+esac

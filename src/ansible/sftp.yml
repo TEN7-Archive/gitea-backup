@@ -1,0 +1,25 @@
+---
+- name: Copy identity files to our temp directory
+  copy:
+    src: "{{ item }}"
+    dest: "{{ _run_temp_dir.path }}/{{ item | basename }}"
+    owner: "backup"
+    group: "backup"
+    mode: "u=rw,g=,o="
+    force: yes
+  loop:
+    - "{{ _backup.keyFile }}"
+    - "{{ _backup.pubKeyFile }}"
+
+- name: Upload the backup.
+  shell: >
+    scp
+    -o "StrictHostKeyChecking=no"
+    -o "UserKnownHostsFile=/dev/null"
+    -o IdentityFile={{ _run_temp_dir.path }}/{{ _backup.keyFile | basename }}
+    -o IdentitiesOnly=yes
+    -P {{ _backup.port | default('22') }}
+    {{ _backup_file_path }}
+    {{ _backup.user }}@{{ _backup.host }}:{% if _backup.prefix is defined %}{{ _backup.prefix }}/{% endif %}{{ _backup_file_name }}
+
+- include_tasks: "httpPing.yml"

@@ -1,0 +1,57 @@
+---
+- hosts: backup
+  roles:
+    - ten7.flightdeck_base
+  tasks:
+    - name: Install necessary software.
+      apk:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop:
+        - "py3-boto3"
+        - "py3-botocore"
+        - "py3-chardet"
+        - "py3-pip"
+        - "py3-urllib3"
+        - "rsync"
+        - "tree"
+      notify:
+        - clear apk cache
+    - name: Deploy key scripts.
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "backup"
+        group: "backup"
+        mode: "u=rx,g=rx,o="
+      loop:
+        - src: "templates/gitea-backup.sh.j2"
+          dest: "/usr/local/bin/gitea-backup"
+    - name: Create the backup directory
+      file:
+        path: "/backups"
+        state: directory
+        owner: "backup"
+        group: "backup"
+        mode: "u=rwx,g=rwx,o="
+    - name: Update permissions of key directories
+      file:
+         path: "{{ item }}"
+         state: directory
+         owner: "backup"
+         group: "backup"
+         mode: "u=rwx,g=rwx,o="
+      loop:
+        - "/home/backup/.ssh"
+  handlers:
+    - name: remove build deps
+      shell: >
+        apk del build-deps
+    - name: clear apk cache
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/tmp/*"
+        - "/var/cache/apk/*"
