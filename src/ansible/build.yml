@@ -43,6 +43,7 @@
          group: "backup"
          mode: "u=rwx,g=rwx,o="
       loop:
+        - "/ansible"
         - "/home/backup/.ssh"
   handlers:
     - name: remove build deps
