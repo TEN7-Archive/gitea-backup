@@ -16,6 +16,7 @@
         state: present
         update_cache: yes
       loop:
+        - "openssh-client"
         - "py3-boto3"
         - "py3-botocore"
         - "py3-chardet"
