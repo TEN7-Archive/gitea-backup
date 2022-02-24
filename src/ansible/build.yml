@@ -3,6 +3,13 @@
   roles:
     - ten7.flightdeck_base
   tasks:
+    - name: Create a temp directory to store files needed by the run
+      tempfile:
+        state: directory
+        prefix: "ansible-deploy-"
+      register: _run_temp_dir
+      notify:
+        - clear caches
     - name: Install necessary software.
       apk:
         name: "{{ item }}"
@@ -18,6 +25,22 @@
         - "tree"
       notify:
         - clear apk cache
+    - name: Install the additional packages from pip
+      pip:
+        name:
+          - "kubernetes"
+        extra_args: "--no-cache-dir"
+    - name: Get the stable version of Kubectl
+      get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/stable.txt"
+        dest: "{{ _run_temp_dir.path }}/stable.txt"
+    - name: Download kubectl
+      get_url:
+        url: "https://storage.googleapis.com/kubernetes-release/release/{{ lookup('file', _run_temp_dir.path + '/stable.txt' )}}/bin/linux/amd64/kubectl"
+        dest: "/bin/kubectl"
+        owner: "root"
+        group: "backup"
+        mode: "u=rwx,g=rx,o="
     - name: Deploy key scripts.
       template:
         src: "{{ item.src }}"
@@ -46,13 +69,15 @@
         - "/ansible"
         - "/home/backup/.ssh"
   handlers:
-    - name: remove build deps
+    - name: clear caches
       shell: >
-        apk del build-deps
-    - name: clear apk cache
-      file:
-        path: "{{ item }}"
-        state: absent
+        rm -rf {{ item }}
+      args:
+        warn: no
       loop:
         - "/tmp/*"
         - "/var/cache/apk/*"
+        - "/var/www/.composer/cache"
+        - "/var/www/.npm/_cacache"
+        - "/root/.ansible/tmp"
+        - "/root/.cache"
