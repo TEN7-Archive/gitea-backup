@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 
 case "$1" in
-  "")
-    echo $"Usage: $0 {backup_set_name}"
-    exit 1
-    ;;
 
-  *)
+  "")
     if [ -n "${GITEA_BACKUP_CONFIG}" ]; then
       config_file=$(mktemp "${TMPDIR:-/tmp/}$(basename $0).XXXXXXXXXXXX")
       echo "$GITEA_BACKUP_CONFIG" | base64 -d > $config_file
@@ -18,6 +14,11 @@ case "$1" in
     else
       ansible-playbook -i /etc/ansible/hosts -i /ansible/inventories/all.ini /ansible/backup.yml
     fi
+    ;;
+
+  *)
+    echo $"Usage: $0 {backup_set_name}"
+    exit 1
     ;;
 
 esac

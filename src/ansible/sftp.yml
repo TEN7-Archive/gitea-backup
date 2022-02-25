@@ -11,6 +11,18 @@
     - "{{ _backup.keyFile }}"
     - "{{ _backup.pubKeyFile }}"
 
+- name: Create the remote directory
+  shell: >
+    ssh
+    -i {{ _run_temp_dir.path }}/{{ _backup.keyFile | basename }}
+    -o "StrictHostKeyChecking=no"
+    -o "UserKnownHostsFile=/dev/null"
+    -o IdentitiesOnly=yes
+    {{ _backup.user }}@{{ _backup.host }}
+    mkdir -p {{ _backup.path }}
+  when:
+    - _backup.path is defined
+
 - name: Rotate files if a retainCount is set.
   shell: >
     ssh
@@ -22,10 +34,9 @@
     mv -f
     {% if _backup.path is defined %}{{ _backup.path }}/{% endif %}{{ _backup_file_prefix }}-{{ item }}.{{ _backup_file_suffix }}
     {% if _backup.path is defined %}{{ _backup.path }}/{% endif %}{{ _backup_file_prefix }}-{{ item + 1 }}.{{ _backup_file_suffix }}
-  loop: "{{ range((gitea_backup.retainCount -2), -1, -1) }}"
+  loop: "{{ range((_backup.retainCount -2), -1, -1) }}"
   when:
-    - gitea_backup.retainCount is defined
-    - gitea_backup.retainCount > 1
+    - _backup.retainCount | default(1) > 1
   ignore_errors: true
 
 - name: Upload the backup.

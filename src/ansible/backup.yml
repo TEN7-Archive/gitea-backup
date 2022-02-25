@@ -1,6 +1,12 @@
 ---
 - hosts: backup
   tasks:
+    - name: Fail if there's no config.
+      fail:
+        msg: "Could not find config file for Gitea Backup."
+      when:
+        - gitea_backup | default({}) | length < 1
+
     - name: Fetch the Gitea pod definition(s)
       set_fact:
         _gitea_pod_def: "{{ lookup('k8s', kind='pod', namespace=gitea_backup.gitea.namespace, label_selector=gitea_backup.gitea.lablelSelector) }}"

@@ -9,9 +9,8 @@
     --access_key={{ _access_key }}
     --secret_key={{ _secret_key }}
     --acl-private
-
     s3://{{ _src_path }} s3://{{ _dest_path }}
-  loop: "{{ range((gitea_backup.retainCount -2), -1, -1) }}"
+  loop: "{{ range((_backup.retainCount -2), -1, -1) }}"
   vars:
     _access_key: "\
       {% if _backup.accessKeyFile is defined %}\
@@ -26,29 +25,29 @@
       {{ _backup.secretKey | default(omit) }}\
       {% endif %}"
     _src_path: "\
-      {{ _backup.bucket }}/
-      {% if _backup.path is defined %}
-      {{ _backup.path }}/
-      {% endif %}
+      {{ _backup.bucket }}/\
+      {% if _backup.path is defined %}\
+      {{ _backup.path }}/\
+      {% endif %}\
       {{ _backup_file_prefix }}-{{ item }}.{{ _backup_file_suffix }}"
     _dest_path: "\
-      {{ _backup.bucket }}/
-      {% if _backup.path is defined %}
-      {{ _backup.path }}/
-      {% endif %}
+      {{ _backup.bucket }}/\
+      {% if _backup.path is defined %}\
+      {{ _backup.path }}/\
+      {% endif %}\
       {{ _backup_file_prefix }}-{{ item + 1 }}.{{ _backup_file_suffix }}"
   when:
-    - gitea_backup.retainCount is defined
-    - gitea_backup.retainCount > 1
+    - _backup.retainCount | default(1) > 1
   ignore_errors: true
+  no_log: "{{ flightdeck_debug | default(false) | ternary(false, true) }}"
 
 - name: Push backup to S3
   amazon.aws.aws_s3:
     bucket: "{{ _backup.bucket }}"
-    object: "{{ _backup.path | default('') }}/{{ _backup_file_name }}"
+    object: "{{ _backup.path | default('') }}/{{ _backup_file_prefix }}-0.{{ _backup_file_suffix }}"
     src: "{{ _backup_file_path }}"
     mode: put
-    s3_url: "{{ _backup.endpoint | default(omit) }}"
+    s3_url: "{{ _backup.endpointProtocol | default('https://') }}{{ _backup.endpoint | default(omit) }}"
     region: "{{ _backup.region | default(omit) }}"
     encrypt: no
     permission: private

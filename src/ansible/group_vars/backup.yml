@@ -17,3 +17,5 @@ flightdeck_user_prompt: '\u@gitea-backup:\w$ '
 flightdeck_motd_links:
   - name: 'Code & docs'
     url: 'https://github.com/ten7/gitea-backup'
+
+gitea_backup: {}
