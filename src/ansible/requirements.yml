@@ -5,3 +5,5 @@ roles:
 collections:
   - name: cloud.common
   - name: community.kubernetes
+  - name: amazon.aws
+  - name: community.general

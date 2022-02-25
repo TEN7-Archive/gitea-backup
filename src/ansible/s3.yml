@@ -1,8 +1,51 @@
 ---
+- name: Rotate files if a retainCount is set.
+  shell: >
+    s3cmd mv
+    {% if _backup.endpoint is defined %}
+    --host={{ _backup.endpoint }}
+    --host-bucket={{ _backup.bucket }}.{{ _backup.endpoint }}
+    {% endif %}
+    --access_key={{ _access_key }}
+    --secret_key={{ _secret_key }}
+    --acl-private
+
+    s3://{{ _src_path }} s3://{{ _dest_path }}
+  loop: "{{ range((gitea_backup.retainCount -2), -1, -1) }}"
+  vars:
+    _access_key: "\
+      {% if _backup.accessKeyFile is defined %}\
+      {{ lookup('file', _backup.accessKeyFile) }}\
+      {% else %}\
+      {{ _backup.accessKey | default(omit) }}\
+      {% endif %}"
+    _secret_key: "\
+      {% if _backup.secretKeyFile is defined %}\
+      {{ lookup('file', _backup.secretKeyFile) }}\
+      {% else %}\
+      {{ _backup.secretKey | default(omit) }}\
+      {% endif %}"
+    _src_path: "\
+      {{ _backup.bucket }}/
+      {% if _backup.path is defined %}
+      {{ _backup.path }}/
+      {% endif %}
+      {{ _backup_file_prefix }}-{{ item }}.{{ _backup_file_suffix }}"
+    _dest_path: "\
+      {{ _backup.bucket }}/
+      {% if _backup.path is defined %}
+      {{ _backup.path }}/
+      {% endif %}
+      {{ _backup_file_prefix }}-{{ item + 1 }}.{{ _backup_file_suffix }}"
+  when:
+    - gitea_backup.retainCount is defined
+    - gitea_backup.retainCount > 1
+  ignore_errors: true
+
 - name: Push backup to S3
-  aws_s3:
+  amazon.aws.aws_s3:
     bucket: "{{ _backup.bucket }}"
-    object: "{{ _backup.prefix | default('') }}/{{ _backup_file_name }}"
+    object: "{{ _backup.path | default('') }}/{{ _backup_file_name }}"
     src: "{{ _backup_file_path }}"
     mode: put
     s3_url: "{{ _backup.endpoint | default(omit) }}"

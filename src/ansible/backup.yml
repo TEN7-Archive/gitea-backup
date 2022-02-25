@@ -1,10 +1,6 @@
 ---
 - hosts: backup
   tasks:
-    - name: Generate the backup timestamp.
-      set_fact:
-        _backup_timestamp: "{{lookup('pipe','date +%Y%m%d%H%M%S')}}"
-
     - name: Fetch the Gitea pod definition(s)
       set_fact:
         _gitea_pod_def: "{{ lookup('k8s', kind='pod', namespace=gitea_backup.gitea.namespace, label_selector=gitea_backup.gitea.lablelSelector) }}"
@@ -16,6 +12,11 @@
     - debug:
         msg: "{{ _gitea_pod_def.metadata.name }}"
 
+    - name: Generate the backup file prefix.
+      set_fact:
+        _backup_file_prefix: "{{ gitea_backup.prefix | default('gitea-backup')}}"
+        _backup_file_suffix: "{{ gitea_backup.format | default('tar.gz') }}"
+
     - name: Create a new backup dump where we can find it.
       kubernetes.core.k8s_exec:
         namespace: "{{ _gitea_pod_def.metadata.namespace }}"
@@ -23,8 +24,8 @@
         container: "{{ gitea_backup.gitea.containerName }}"
         command: >
           gitea dump
-          --type tar.gz
-          --file /tmp/gitea-backup-{{ _backup_timestamp }}
+          --type {{ _backup_file_suffix }}
+          --file /tmp/{{ _backup_file_prefix }}
 
     - name: Create a temp directory to hold the backup
       tempfile:
@@ -36,8 +37,8 @@
 
     - name: Generate the backup file name.
       set_fact:
-        _backup_file_name: "gitea-backup-{{ _backup_timestamp }}.tar.gz"
-        _backup_file_path: "{{ _run_temp_dir.path }}/gitea-backup-{{ _backup_timestamp }}.tar.gz"
+        _backup_file_name: "{{ _backup_file_prefix }}.{{ _backup_file_suffix }}"
+        _backup_file_path: "{{ _run_temp_dir.path }}/{{ _backup_file_prefix }}.{{ _backup_file_suffix }}"
 
     ##
     ## This should work, but fails due to a library issue.
@@ -48,13 +49,13 @@
     #     pod: "{{ _gitea_pod_def.metadata.name }}"
     #     container: "gitea"
     #     state: from_pod
-    #     remote_path: "/tmp/gitea-backup-{{ _backup_timestamp }}.tar.gz"
-    #     local_path:  "/tmp/gitea-backup-{{ _backup_timestamp }}.tar.gz"
+    #     remote_path: "/tmp/{{ _backup_file_prefix }}.{{ _backup_file_suffix }}"
+    #     local_path:  "{{ _backup_file_path }}"
 
     - name: Copy backup to local
       shell: >
         kubectl cp
-        {{ _gitea_pod_def.metadata.namespace }}/{{ _gitea_pod_def.metadata.name }}:/tmp/gitea-backup-{{ _backup_timestamp }}.tar.gz
+        {{ _gitea_pod_def.metadata.namespace }}/{{ _gitea_pod_def.metadata.name }}:/tmp/{{ _backup_file_prefix }}.{{ _backup_file_suffix }}
         {{ _backup_file_path }}
 
     - name: Delete the dump on the gitea pod.
@@ -63,7 +64,7 @@
         pod: "{{ _gitea_pod_def.metadata.name }}"
         container: "gitea"
         command: >
-          rm /tmp/gitea-backup-{{ _backup_timestamp }}.tar.gz
+          rm /tmp/{{ _backup_file_prefix }}.{{ _backup_file_suffix }}
 
     - name: Send backup to s3 destinations.
       include_tasks: "s3.yml"

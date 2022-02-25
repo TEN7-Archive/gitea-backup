@@ -11,25 +11,25 @@
       notify:
         - clear caches
     - name: Install necessary software.
-      apk:
-        name: "{{ item }}"
+      community.general.apk:
+        name: "{{ _packages | join(',') }}"
         state: present
         update_cache: yes
-      loop:
-        - "openssh-client"
-        - "py3-boto3"
-        - "py3-botocore"
-        - "py3-chardet"
-        - "py3-pip"
-        - "py3-urllib3"
-        - "rsync"
-        - "tree"
       notify:
         - clear apk cache
+      vars:
+        _packages:
+          - "openssh-client"
+          - "py3-boto3"
+          - "py3-botocore"
+          - "py3-chardet"
+          - "py3-pip"
+          - "py3-urllib3"
     - name: Install the additional packages from pip
       pip:
         name:
           - "kubernetes"
+          - "s3cmd"
         extra_args: "--no-cache-dir"
     - name: Get the stable version of Kubectl
       get_url:
