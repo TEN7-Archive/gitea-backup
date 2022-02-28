@@ -26,8 +26,8 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: backup
-  namespace: {{ template "gitea-backup.fullname" . }}-operator-rolebinding
+  name: {{ template "gitea-backup.fullname" . }}-operator-rolebinding
+  namespace: {{ .Release.Namespace | quote }}
 subjects:
 - kind: ServiceAccount
   name: {{ include "gitea-backup.serviceAccountName" . }}
