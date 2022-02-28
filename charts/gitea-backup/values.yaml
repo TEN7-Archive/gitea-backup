@@ -1,0 +1,108 @@
+# Create the Role and RoleBinding necessary to get files from Gitea.
+rbac:
+  create: true
+
+image:
+  repository: ten7/gitea-backup
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+gitea_backup:
+  config:
+    prefix: "code-example-com"
+    format: "tar.gz"
+    gitea:
+      namespace: "gitea"
+      containerName: "gitea"
+      lablelSelector: "app=gitea"
+
+    destinations:
+      # - name: "Remote bucket"
+      #   type: s3
+      #   bucket: "my-example-bucket"
+      #   prefix: "backups/gitea"
+      #   accessKeyFile: "/config/my-example-bucket/s3-key.txt"
+      #   secretKeyFile: "/config/my-example-bucket/s3-secret.txt"
+      #   endpoint: "https://s3.example.com"
+      #   region: "abc"
+      #   httpPing: "https://example.com/my_ping_service"
+      #   disabled: false
+      #
+      # - name: "Offsite sftp"
+      #   type: sftp
+      #   host: "sftp.example.com"
+      #   user: "example"
+      #   keyFile: "/config/example-key/id_rsa"
+      #   pubKeyFile: "/config/example-key/id_rsa.pub"
+      #   prefix: "backups/gitea"
+      #   httpPing: "https://example.com/my_ping_service"
+      #   disabled: false
+
+cronjob:
+  schedule: "0 0 * * *"
+  concurrencyPolicy: "Forbid"
+  restartPolicy: "Never"
+
+
+# additional volumes to add to the gitea-backup cronjob.
+extraVolumes:
+# - name: vol-secret-my-example-bucket
+#   secret:
+#     defaultMode: 420
+#     secretName: my-example-bucket
+# - name: vol-secret-example-key
+#   secret:
+#     defaultMode: 420
+#     secretName: example-key
+
+
+# additional volumes to mount.
+extraVolumeMounts:
+# - name: vol-secret-my-example-bucket
+#   mountPath: "/config/my-example-bucket"
+# - name: vol-secret-example-key
+#   mountPath: "/config/example-key"
+
+#
+# The service account is used to authenticate with k8s API to get files.
+#
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,117 @@
+---
+# Source: gitea-backup/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: RELEASE-NAME-gitea-backup
+  labels:
+    helm.sh/chart: gitea-backup-1.0.0
+    app.kubernetes.io/name: gitea-backup
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: gitea-backup/templates/configmap.yaml
+apiVersion: v1
+data:
+  gitea-backup.yml: |
+    gitea_backup:
+      gitea:
+        namespace: "gitea"
+        containerName: "gitea"
+        lablelSelector: "app=gitea"
+kind: ConfigMap
+metadata:
+  namespace: "default"
+  name: RELEASE-NAME-gitea-backup-config
+---
+# Source: gitea-backup/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: "default"
+  name: RELEASE-NAME-gitea-backup-operator
+rules:
+- apiGroups:
+    - ""
+  resources:
+    - "pods"
+  verbs:
+    - "get"
+    - "watch"
+    - "list"
+- apiGroups:
+    - ""
+  resources:
+    - "pods/exec"
+    - "pods/cp"
+  verbs:
+    - "create"
+    - "update"
+    - "patch"
+---
+# Source: gitea-backup/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup
+  namespace: RELEASE-NAME-gitea-backup-operator-rolebinding
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-gitea-backup
+  namespace: "default"
+roleRef:
+  kind: Role
+  name: RELEASE-NAME-gitea-backup-operator
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: gitea-backup/templates/cronjob.yaml
+apiVersion: batch/v1
+kind: cronjob
+metadata:
+  name: RELEASE-NAME-gitea-backup
+  labels:
+    helm.sh/chart: gitea-backup-1.0.0
+    app.kubernetes.io/name: gitea-backup
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  concurrencyPolicy: Forbid
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: gitea-backup
+          app.kubernetes.io/instance: RELEASE-NAME
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: gitea-backup
+            app.kubernetes.io/instance: RELEASE-NAME
+        spec:
+          serviceAccountName: RELEASE-NAME-gitea-backup
+          securityContext:
+            {}
+          containers:
+          - name: gitea-backup
+            securityContext:
+              {}
+            image: "ten7/gitea-backup:1.0.0"
+            imagePullPolicy: IfNotPresent
+            command:
+              - "bin/bash"
+              - "-c"
+              - "kubectl exec gitea-0 -n gitea -- /scripts/gitea-backup.sh"
+            resources:
+              {}
+            volumeMounts:
+              - name: config
+                mountPath: /config/gitea-backup
+          restartPolicy: Never
+          volumes:
+            - name: config
+              secret:
+                secretName: RELEASE-NAME-gitea-backup
+                defaultMode: 110

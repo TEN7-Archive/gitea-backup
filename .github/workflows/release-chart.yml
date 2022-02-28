@@ -1,0 +1,20 @@
+name: release-chart
+on:
+  push:
+    tags: '*'
+
+jobs:
+  release-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Publish Helm chart
+        uses: stefanprodan/helm-gh-pages@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          charts_dir: charts
+          branch: gh-pages
+          app_version: ${{ env.RELEASE_VERSION }}
+          chart_version: ${{ env.RELEASE_VERSION }}
