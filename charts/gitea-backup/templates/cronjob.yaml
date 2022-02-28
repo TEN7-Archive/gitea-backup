@@ -5,7 +5,7 @@
 {{- $apiVersion = "batch/v1" }}
 {{- end }}
 apiVersion: {{ $apiVersion }}
-kind: cronjob
+kind: CronJob
 metadata:
   name: {{ include "gitea-backup.fullname" . }}
   labels:
@@ -15,9 +15,6 @@ spec:
   schedule: {{ .Values.cronjob.schedule | quote }}
   jobTemplate:
     spec:
-      selector:
-        matchLabels:
-          {{- include "gitea-backup.selectorLabels" . | nindent 10 }}
       template:
         metadata:
           labels:
