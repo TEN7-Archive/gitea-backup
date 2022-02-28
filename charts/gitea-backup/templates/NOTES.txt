@@ -1,7 +1,0 @@
-1. You an inspect the cronjob using the following command:
-
-   kubectl --namespace {{ .Release.Namespace }} get cronjob {{ include "gitea-backup.fullname" . }}
-
-2. If you want to run the backup manually, do the following:
-
-   kubectl --namespace {{ .Release.Namespace }} create job --from=cronjob/{{ include "gitea-backup.fullname" . }} manual-gitea-backup
