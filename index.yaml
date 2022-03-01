@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   gitea-backup:
   - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2022-03-01T18:07:58.52490201Z"
+    description: A Helm chart for Kubernetes
+    digest: 7f9b7ab59dc85c3f09c9a86bba2081d6535eef4a472408faf9b9719be72da2f2
+    name: gitea-backup
+    type: application
+    urls:
+    - https://ten7.github.io/gitea-backup/gitea-backup-1.0.0.tgz
+    version: 1.0.0
+  - apiVersion: v2
     appVersion: 0.3.0
     created: "2022-03-01T16:21:15.7023169Z"
     description: A Helm chart for Kubernetes
@@ -61,4 +71,4 @@ entries:
     urls:
     - https://ten7.github.io/gitea-backup/gitea-backup-0.1.0.tgz
     version: 0.1.0
-generated: "2022-03-01T16:21:15.701707099Z"
+generated: "2022-03-01T18:07:58.524234033Z"
