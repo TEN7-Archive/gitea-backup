@@ -6,6 +6,8 @@ apiVersion: v1
 data:
   gitea-backup.yml: |
     gitea_backup:
+      prefix: {{ .Values.gitea_backup.config.prefix | quote }}
+      format: {{ .Values.gitea_backup.config.format | quote }}
       gitea:
         namespace: {{ $gitea_namespace | quote }}
         containerName: {{ .Values.gitea_backup.config.gitea.containerName | quote }}

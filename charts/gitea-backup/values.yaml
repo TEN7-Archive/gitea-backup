@@ -12,7 +12,7 @@ fullnameOverride: ""
 
 gitea_backup:
   config:
-    prefix: "code-example-com"
+    prefix: "gitea-dump"
     format: "tar.gz"
     gitea:
       namespace: "gitea"
