@@ -60,9 +60,9 @@ spec:
           restartPolicy: {{ .Values.cronjob.restartPolicy }}
           volumes:
             - name: config
-              secret:
-                secretName: {{ include "gitea-backup.fullname" . }}
-                defaultMode: 110
+              configMap:
+                name: {{ template "gitea-backup.fullname" . }}-config
+                defaultMode: 420
             {{- if .Values.extraVolumes }}
             {{- toYaml .Values.extraVolumes | nindent 12 }}
             {{- end }}
