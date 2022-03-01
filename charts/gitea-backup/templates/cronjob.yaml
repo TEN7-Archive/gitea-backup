@@ -11,7 +11,9 @@ metadata:
   labels:
     {{- include "gitea-backup.labels" . | nindent 4 }}
 spec:
-  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjob.failedJobsHistoryLimit }}
+  concurrencyPolicy: {{ .Values.cronjob.concurrencyPolicy }}
   schedule: {{ .Values.cronjob.schedule | quote }}
   jobTemplate:
     spec:
@@ -36,7 +38,7 @@ spec:
             command:
               - "bin/bash"
               - "-c"
-              - "kubectl exec gitea-0 -n gitea -- /scripts/gitea-backup.sh"
+              - "gitea-backup"
             resources:
               {{- toYaml .Values.resources | nindent 14 }}
             volumeMounts:

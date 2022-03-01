@@ -45,7 +45,8 @@ cronjob:
   schedule: "0 0 * * *"
   concurrencyPolicy: "Forbid"
   restartPolicy: "Never"
-
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 1
 
 # additional volumes to add to the gitea-backup cronjob.
 extraVolumes:
