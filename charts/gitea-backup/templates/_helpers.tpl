@@ -61,3 +61,12 @@ Create the name of the service account to use
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Create image name and tag used by the deployment.
+*/}}
+{{- define "gitea-backup.image" -}}
+{{- $name := .Values.image.repository -}}
+{{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
+{{- printf "%s:%s" $name $tag -}}
+{{- end -}}
