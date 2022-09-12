@@ -42,7 +42,8 @@ gitea_backup:
       #   accessKeyFile: "/config/my-example-bucket/s3-key.txt"
       #   secretKeyFile: "/config/my-example-bucket/s3-secret.txt"
       #   endpoint: "s3.example.com"
-      #   endpointProtocol: "http://"
+      #   bucketHost: "my-example-bucket.s3.example.com"
+      #   endpointProtocol: "https://my-example-bucket.s3.example.com"
       #   region: "abc"
       #   httpPing: "https://example.com/my_ping_service"
       #   disabled: false
@@ -57,7 +58,8 @@ gitea_backup:
       ## * `secretKey` is the secret key to the S3 bucket. Required if `secretKeyFile` is not specified.
       ## * `secretKeyFile` is the path in the backup container to a file containing the S3 secret key. See `extraVolumes` and `extraVolumeMounts` on how to mount a secret into the backup container.
       ## * `endpoint` is the S3 endpoint URL. Required if not using AWS.
-      ## * `endpointProtocol` is the protocol used on the endpoint. Optional, defaults to `https://`.
+      ## * `hostBucket` is the hostname of the bucket, typically `bucketName.s3EndPointHostname.tld`. Required if not using AWS.
+      ## * `s3Url` is the full URL to the S3 bucket, including protocol, typically `https://bucketName.s3EndPointHostname.tld`. Required if not using AWS.
       ## * `region` is the S3 region on which the bucket resides.
       ## * `httpPing` is the URL for a ping service such as HC.io, BetterUptime or others to ping when the backup completes. Optional.
       ## * `disabled` is `true` to disable (ignore) this destination. Optional, defaults to `false`.
