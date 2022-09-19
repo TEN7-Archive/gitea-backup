@@ -4,6 +4,8 @@
     s3cmd mv
     {% if _backup.endpoint is defined %}
     --host={{ _backup.endpoint }}
+    {% endif %}
+    {% if _backup.hostBucket is defined %}
     --host-bucket={{ _backup.hostBucket }}
     {% endif %}
     --access_key={{ _access_key }}

@@ -42,8 +42,8 @@ gitea_backup:
       #   accessKeyFile: "/config/my-example-bucket/s3-key.txt"
       #   secretKeyFile: "/config/my-example-bucket/s3-secret.txt"
       #   endpoint: "s3.example.com"
-      #   bucketHost: "my-example-bucket.s3.example.com"
-      #   endpointProtocol: "https://my-example-bucket.s3.example.com"
+      #   hostBucket: "my-example-bucket.s3.example.com"
+      #   s3Url: "https://my-example-bucket.s3.example.com"
       #   region: "abc"
       #   httpPing: "https://example.com/my_ping_service"
       #   disabled: false
