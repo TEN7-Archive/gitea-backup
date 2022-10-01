@@ -1,0 +1,57 @@
+---
+- debug:
+    var: _remote
+  when:
+    - pantheon_backup.debug | default(false) == true
+
+- name: Copy identity files to our temp directory
+  copy:
+    src: "{{ item }}"
+    dest: "{{ _run_temp_dir.path }}/{{ item | basename }}"
+    owner: "backup"
+    group: "backup"
+    mode: "u=rw,g=,o="
+    force: yes
+  loop:
+    - "{{ _remote.keyFile }}"
+    - "{{ _remote.pubKeyFile }}"
+
+- name: Create the remote directory
+  shell: >
+    ssh
+    -i {{ _run_temp_dir.path }}/{{ _remote.keyFile | basename }}
+    -o "StrictHostKeyChecking=no"
+    -o "UserKnownHostsFile=/dev/null"
+    -o "IdentitiesOnly=yes"
+    {{ _remote.user }}@{{ _remote.host }}
+    mkdir -p {{ _target.path }}
+  when:
+    - _target.path is defined
+
+- name: Rotate files on sftp if a retainCount is set
+  shell: >
+    ssh
+    -i {{ _run_temp_dir.path }}/{{ _remote.keyFile | basename }}
+    -o "StrictHostKeyChecking=no"
+    -o "UserKnownHostsFile=/dev/null"
+    -o IdentitiesOnly=yes
+    {{ _remote.user }}@{{ _remote.host }}
+    mv -f
+    {% if _target.path is defined %}{{ _target.path }}/{% endif %}{{ _backup_file_prefix }}-{{ item }}.{{ _backup_file_suffix }}
+    {% if _target.path is defined %}{{ _target.path }}/{% endif %}{{ _backup_file_prefix }}-{{ item + 1 }}.{{ _backup_file_suffix }}
+  loop: "{{ range(((_target.retainCount | default(1)) -2), -1, -1) }}"
+  when:
+    - _target.retainCount | default(1) > 1
+  ignore_errors: true
+
+- name: Upload the backup via sftp
+  shell: >
+    scp
+    -o "StrictHostKeyChecking=no"
+    -o "UserKnownHostsFile=/dev/null"
+    -o IdentityFile={{ _run_temp_dir.path }}/{{ _remote.keyFile | basename }}
+    -o IdentitiesOnly=yes
+    -P {{ _remote.port | default('22') }}
+    {{ _backup_file_path }}
+    {{ _remote.user }}@{{ _remote.host }}:{% if _target.path is defined %}{{ _target.path }}/{% endif %}{{ _backup_file_prefix }}-0.{{ _backup_file_suffix }}
+

@@ -1,0 +1,74 @@
+---
+- debug:
+    var: _remote
+  when:
+    - mysql_backup.debug | default(false) == true
+
+- name: Rotate files on S3 if a retainCount is set.
+  shell: >
+    {{ mysql_backup.s3cmd | default('s3cmd') }} mv
+    {% if _backup.endpoint is defined %}
+    --host={{ _backup.endpoint }}
+    {% endif %}
+    {% if _backup.endpoint is defined %}
+    --host-bucket={{ _backup.hostBucket }}
+    {% endif %}
+    --access_key={{ _access_key }}
+    --secret_key={{ _secret_key }}
+    --acl-private
+    s3://{{ _src_path }} s3://{{ _dest_path }}
+  loop: "{{ range(((_target.retainCount | default(1)) -2), -1, -1) }}"
+  vars:
+    _access_key: "\
+      {% if _remote.accessKeyFile is defined %}\
+      {{ lookup('file', _remote.accessKeyFile) }}\
+      {% else %}\
+      {{ _remote.accessKey | default(omit) }}\
+      {% endif %}"
+    _secret_key: "\
+      {% if _remote.secretKeyFile is defined %}\
+      {{ lookup('file', _remote.secretKeyFile) }}\
+      {% else %}\
+      {{ _backup.secretKey | default(omit) }}\
+      {% endif %}"
+    _src_path: "\
+      {{ _remote.bucket }}/\
+      {% if _target.path is defined %}\
+      {{ _target.path }}/\
+      {% endif %}\
+      {{ _backup_file_prefix }}-{{ item }}.{{ _backup_file_suffix }}"
+    _dest_path: "\
+      {{ _remote.bucket }}/\
+      {% if _target.path is defined %}\
+      {{ _target.path }}/\
+      {% endif %}\
+      {{ _backup_file_prefix }}-{{ item + 1 }}.{{ _backup_file_suffix }}"
+  when:
+    - _target.retainCount | default(1) > 1
+  ignore_errors: true
+  no_log: "{{ mysql_backup.debug | default(false) | ternary(false, true) }}"
+
+- name: Push backup to S3
+  amazon.aws.aws_s3:
+    bucket: "{{ _remote.bucket }}"
+    object: "{{ _target.path | default('') }}/{{ _backup_file_prefix }}-0.{{ _backup_file_suffix }}"
+    src: "{{ _backup_file_path }}"
+    mode: put
+    s3_url: "{{ _backup.s3Url | default(omit) }}"
+    region: "{{ _remote.region | default(omit) }}"
+    encrypt: no
+    permission: private
+    aws_access_key: "\
+      {% if _remote.accessKeyFile is defined %}\
+      {{ lookup('file', _remote.accessKeyFile) }}\
+      {% else %}\
+      {{ _remote.accessKey | default(omit) }}\
+      {% endif %}"
+    aws_secret_key: "\
+      {% if _remote.secretKeyFile is defined %}\
+      {{ lookup('file', _remote.secretKeyFile) }}\
+      {% else %}\
+      {{ _remote.secretKey | default(omit) }}\
+      {% endif %}"
+  no_log: "{{ mysql_backup.debug | default(false) | ternary(false, true) }}"
+

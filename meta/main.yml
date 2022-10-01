@@ -1,0 +1,16 @@
+galaxy_info:
+  author: socketwench
+  description: Backup your Gitea installations to S3 or SFTP
+  company: TEN7 Interactive
+  issue_tracker_url: https://github.com/ten7/gitea-backup/issues
+  license: GPL-3.0-only
+  min_ansible_version: 2.8
+  platforms:
+   - name: Linux
+     versions:
+     - all
+
+  galaxy_tags: ['backup', 'website', 'git']
+
+dependencies: []
+

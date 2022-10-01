@@ -1,0 +1,104 @@
+---
+- name: Ensure the backup has required parameters
+  fail:
+    msg: "Could not find gitea_backup, or missing required parameters"
+  when:
+    - _backup.source | default('') == ''
+    - _backup.remotes | default([]) | length < 1
+- debug: var=_backup
+  when:
+    - gitea_backup.debug | default(false) == true
+- name: Check if the source configuration exists
+  fail:
+    msg: "Could not find source configuration {{ _backup.source }}"
+  when:
+    - gitea_backup.sources[_backup.source] is not defined
+- name: Get the source configuration
+  set_fact:
+    _source: "{{ gitea_backup.sources[_backup.source] }}"
+
+- name: Fetch the Gitea pod definition(s)
+  set_fact:
+    _gitea_pod_def: "{{ lookup('k8s', kind='pod', namespace=_source.namespace, label_selector=_source.lablelSelector) }}"
+- fail:
+    msg: "Could not find pod with correct label selector (app=gitea)"
+  when:
+    - "(_gitea_pod_def | default([])) | length < 1"
+
+- debug:
+    msg: "{{ _gitea_pod_def.metadata.name }}"
+  when:
+    - gitea_backup.debug | default(false) == true
+
+- name: Generate the backup file prefix.
+  set_fact:
+    _backup_file_prefix: "{{ _backup.prefix | default('gitea-backup') | regex_replace('[^A-Za-z0-9]', '-') }}"
+    _backup_file_suffix: "{{ _backup.format | default('tar.gz') }}"
+
+- name: Create a new backup dump where we can find it.
+  kubernetes.core.k8s_exec:
+    namespace: "{{ _gitea_pod_def.metadata.namespace }}"
+    pod: "{{ _gitea_pod_def.metadata.name }}"
+    container: "{{ _source.containerName }}"
+    command: >
+      gitea dump
+      --type {{ _backup_file_suffix }}
+      --file /tmp/{{ _backup_file_prefix }}
+
+- name: Generate the backup file name.
+  set_fact:
+    _backup_file_path: "{{ _run_temp_dir.path }}/{{ _backup_file_prefix }}-0.{{ _backup_file_suffix }}"
+
+##
+## This should work, but fails due to a library issue.
+##
+# - name: Copy backup to local
+#   kubernetes.core.k8s_cp:
+#     namespace: "{{ _gitea_pod_def.metadata.namespace }}"
+#     pod: "{{ _gitea_pod_def.metadata.name }}"
+#     container: "{{ _source.containerName }}"
+#     state: from_pod
+#     remote_path: "/tmp/{{ _backup_file_prefix }}.{{ _backup_file_suffix }}"
+#     local_path:  "{{ _backup_file_path }}"
+
+- name: Copy backup to local
+  shell: >
+    kubectl cp
+    {{ _gitea_pod_def.metadata.namespace }}/{{ _gitea_pod_def.metadata.name }}:/tmp/{{ _backup_file_prefix }}.{{ _backup_file_suffix }}
+    {{ _backup_file_path }}
+
+- name: Delete the dump on the gitea pod.
+  kubernetes.core.k8s_exec:
+    namespace: "{{ _gitea_pod_def.metadata.namespace }}"
+    pod: "{{ _gitea_pod_def.metadata.name }}"
+    container: "{{ _source.containerName }}"
+    command: >
+      rm /tmp/{{ _backup_file_prefix }}.{{ _backup_file_suffix }}
+
+- name: Send backup to remotes                                                        
+  include_tasks: 
+    file: "\
+      {% if _remote.type == 's3' %}\
+      s3.yml\
+      {% elif _remote.type == 'sftp' %}\
+      sftp.yml\
+      {% endif %}"
+  loop: "{{ _backup.targets | default([]) }}"                                         
+  loop_control:                                                                            
+    label: "{{ _target.remote }}"
+    loop_var: _target
+  vars:                                                                                    
+    _remote: "{{ gitea_backup.remotes[_target.remote] }}"                          
+  when:                                                                                    
+    - _target.remote is defined                                                             
+    - _target.disabled | default(false) == false                                          
+    - gitea_backup.remotes[_target.remote] is defined                               
+    - gitea_backup.remotes[_target.remote].type is defined
+
+- name: Clean up from the backup
+  file:
+    path: "{{ _backup_file_path }}"
+    state: absent
+
+- include_tasks: "httpPing.yml"
+

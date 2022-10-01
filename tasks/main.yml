@@ -1,0 +1,29 @@
+---
+- name: Smoke test the environment.
+  fail:
+    msg: "Could not find gitea_backup, or missing required parameters"
+  when:
+    - gitea_backup | default({}) | length < 1
+    - gitea_backup.sources | default([]) | length < 1
+    - gitea_backup.destinations | default([]) | length < 1
+    - gitea_backup.backups | default([]) | length < 1
+
+- name: Create a temp directory to hold the backup
+  tempfile:
+    state: directory
+    prefix: "gitea-backup"
+  register: _run_temp_dir
+  notify:
+    - delete temp items
+
+- name: Do backups
+  include_tasks: "backup.yml"
+  loop: "{{ gitea_backup.backups }}"
+  loop_control:
+    extended: yes
+    label: "{{ _backup.name | default(ansible_loop.index0) }}"
+    loop_var: _backup
+  when:
+    - _backup.disabled | default(false) != true
+  ignore_errors: "{{ gitea_backup.stopOnFailure | default(false) | bool }}"
+
