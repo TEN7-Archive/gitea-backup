@@ -43,7 +43,10 @@
     command: >
       gitea dump
       --type {{ _backup_file_suffix }}
-      --file /tmp/{{ _backup_file_prefix }}
+      --custom-path /tmp/
+      --file {{ _backup_file_prefix }}
+      --skip-lfs-data
+      --skip-index
 
 - name: Generate the backup file name.
   set_fact:
